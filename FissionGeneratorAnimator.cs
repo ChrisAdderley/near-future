@@ -1,115 +1,35 @@
-﻿/// FissionGeneratorAnimator
+﻿/// FissionGeneratorRadiatorAnimator
 /// ---------------------------------------------------
-/// Module defining an animation module for a fission generator
-
-/// TODO: Add heat animation for deployed, retracted states
+/// Handles animation for reactor heat
 
 using System;
+using System.Collections.Generic;
 using System.Linq;
+using System.Text;
 using UnityEngine;
-
 namespace NearFuture
 {
-    public class FissionGeneratorAnimator : PartModule, IFissionGeneratorAnimator
+    public class FissionGeneratorAnimator: PartModule
     {
-        //
+
         [KSPField(isPersistant = false)]
-        public string DeployAnimation;
+        public string HeatAnimation;
 
-        [KSPField(isPersistant = true)]
-        public string State;
-
-        private AnimationState[] deployStates;
+        private AnimationState[] heatStates;
 
         public override void OnStart(PartModule.StartState state)
         {
-            deployStates =  Utils.SetUpAnimation(DeployAnimation, this.part);
-
-
-            if (CurrentState == RadiatorState.Deploying) 
-            { 
-                CurrentState = RadiatorState.Retracted; 
-            }
-            else if (CurrentState == RadiatorState.Retracting) 
-            { 
-                CurrentState = RadiatorState.Deployed; 
-            }
-
-            if (CurrentState == RadiatorState.Deployed)
-            {
-                foreach (AnimationState deployState in deployStates)
-                {
-                    deployState.normalizedTime = 1;
-                }
-            }
+            heatStates = Utils.SetUpAnimation(HeatAnimation, part);
 
 
         }
 
-        public RadiatorState CurrentState
+        // set heat level from zero to one (1 = max heat)
+        public void SetHeatLevel(float val)
         {
-            get
+            foreach (AnimationState heatState in heatStates)
             {
-                try
-                {
-                    return (RadiatorState)Enum.Parse(typeof(RadiatorState), State);
-                }
-                catch
-                {
-                    CurrentState = RadiatorState.Retracted;
-                    return CurrentState;
-                }
-            }
-            private set
-            {
-                
-                State = Enum.GetName(typeof(RadiatorState), value);
-            }
-        }
-
-        public void Deploy()
-        {
-            if (CurrentState != RadiatorState.Retracted)
-            { 
-                return; 
-            }
-            CurrentState = RadiatorState.Deploying;
-
-            foreach (var state in deployStates)
-            {
-                state.speed = 1;
-            }
-        }
-
-        public void Retract()
-        {
-            if (CurrentState != RadiatorState.Deployed) 
-            { 
-                return; 
-            }
-            CurrentState = RadiatorState.Retracting;
-
-            foreach (var state in deployStates)
-            {
-                state.speed = -1;
-            }
-        }
-
-        public override void OnUpdate()
-        {
-            foreach (var deployState in deployStates)
-            {
-                deployState.normalizedTime = Mathf.Clamp01(deployState.normalizedTime);
-            }
-
-            if (CurrentState == RadiatorState.Deploying && deployStates[0].normalizedTime >= 1)
-            {
-                CurrentState = RadiatorState.Deployed;
-
-            }
-            else if (CurrentState == RadiatorState.Retracting && deployStates[0].normalizedTime >= 0)
-            {
-                CurrentState = RadiatorState.Retracted;
+                heatState.normalizedTime = val;
             }
         }
     }
