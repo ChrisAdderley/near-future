@@ -10,22 +10,7 @@ namespace NearFuture
 {
     internal static class Utils
     {
-        private static string cfgName = "NFPP.cfg";
-
-        // Gets the cfg file path
-        public static string GetConfigFilePath()
-        {
-            string path = KSPUtil.ApplicationRootPath + "saves/" + HighLogic.SaveFolder + "/" + cfgName;
-            
-            return path;
-        }
-
-        // Gets the cfg file itself
-        public static ConfigNode GetConfigFile()
-        {
-            ConfigNode config = new ConfigNode();
-            return config;
-        }
+    
 
         // This function loads up some animationstates
         public static AnimationState[] SetUpAnimation(string animationName, Part part)
