@@ -91,8 +91,15 @@ namespace NearFuture
         }
 
 
+        public override void OnLoad(ConfigNode node)
+        {
+            base.OnLoad(node);
+            this.moduleName = "Capacitor";
+        }
+
         public override void OnStart(PartModule.StartState state)
         {
+            
             this.part.force_activate();
             capacityState = Utils.SetUpAnimation(ChargeAnimation, this.part);
 

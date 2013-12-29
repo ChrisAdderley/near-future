@@ -97,6 +97,12 @@ namespace NearFuture
             ToggleRadiator();
         }
 
+        public override void OnLoad(ConfigNode node)
+        {
+            base.OnLoad(node);
+            this.moduleName = "Fission Reactor Radiator";
+        }
+
         // Info for ui
         public override string GetInfo()
         {

@@ -34,10 +34,6 @@ namespace NearFuture
 
 
 
-        // Energy needed
-        [KSPField(isPersistant = false)]
-        public float EnergyUsage;
-
         [KSPField(isPersistant = false, guiActive = true, guiName = "Variable Isp Setting")]
         public string CurThrustSettingGUI = "0%";
 
@@ -48,8 +44,7 @@ namespace NearFuture
         public override string GetInfo()
         {
             return String.Format("Maximum Thrust: {0:F1} kN", MaxThrust) + "\n" +
-                String.Format("Isp at Maximum Thrust: {0:F0} s", MaxThrustIsp) + "\n" +
-                String.Format("Maximum Required Power: {0:F1} Ec/s", EnergyUsage); 
+                String.Format("Isp at Maximum Thrust: {0:F0} s", MaxThrustIsp) + "\n";
         }
 
         // Step for adjustments
@@ -58,15 +53,15 @@ namespace NearFuture
 
 
         private ModuleEngines engine;
-        private ModuleEngines.Propellant ecPropellant;
-        private ModuleEngines.Propellant fuelPropellant;
+        private Propellant ecPropellant;
+        private Propellant fuelPropellant;
         private FloatCurve thrustCurve;
         private FloatCurve ispCurve;
         private FloatCurve ecCurve;
         private FloatCurve fuelCurve;
+
+        private FloatCurve thrustAtmoCurve;
         // Actions
-
-
         [KSPEvent(guiActive = true, guiName = "Increase Thrust", active = true)]
         public void IncreaseThrustGUI()
         {
@@ -127,6 +122,12 @@ namespace NearFuture
             CurThrustSettingGUI = String.Format("{0:F0}%", CurThrustSetting * 100f);
         }
 
+        public override void OnLoad(ConfigNode node)
+        {
+            base.OnLoad(node);
+            this.moduleName = "Variable ISP Engine";
+        }
+
         public override void OnStart(PartModule.StartState state)
         {
             
@@ -145,6 +146,7 @@ namespace NearFuture
             ispCurve = new FloatCurve();
             ecCurve = new FloatCurve();
             fuelCurve = new FloatCurve();
+            thrustAtmoCurve = new FloatCurve();
 
             // get thrust at setting 0 from ModuleEngines
             thrustCurve.Add(0f,engine.maxThrust);
@@ -153,10 +155,8 @@ namespace NearFuture
             // get isp at setting 0 from ModuleEngines
             ispCurve.Add(0f,engine.atmosphereCurve.Evaluate(0f));
             ispCurve.Add(1f,MaxThrustIsp);
-
-
             
-            foreach (ModuleEngines.Propellant prop in engine.propellants)
+            foreach (Propellant prop in engine.propellants)
             {
                 if (prop.name == FuelName)
                     fuelPropellant = prop;
@@ -179,6 +179,8 @@ namespace NearFuture
             engine.atmosphereCurve.Add(1f, 200f);
             // adjust thrust
             engine.maxThrust = thrustCurve.Evaluate(CurThrustSetting);
+
+            CurThrustSettingGUI = String.Format("{0:F0}%", CurThrustSetting * 100f);
 
             Debug.Log("NFPP: Variable ISP engine setup complete");
         }

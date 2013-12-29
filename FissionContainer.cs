@@ -17,6 +17,12 @@ namespace NearFuture
         public bool Expended = false;
 
 
+        public override void OnLoad(ConfigNode node)
+        {
+            base.OnLoad(node);
+            this.moduleName = "Fission Fuel Container";
+        }
+
         // Check to see if this module has both fuel and space for waste
         public bool CheckFuelSpace(double amt)
         {

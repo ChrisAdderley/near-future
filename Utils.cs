@@ -23,14 +23,7 @@ namespace NearFuture
         // Gets the cfg file itself
         public static ConfigNode GetConfigFile()
         {
-            string path = GetConfigFilePath();
-            ConfigNode config = ConfigNode.Load(path);
-            if (config == null)
-            {
-                config = new ConfigNode();
-                config.AddValue("timestamp", DateTime.Now.ToString());
-                config.Save(GetConfigFilePath());
-            }
+            ConfigNode config = new ConfigNode();
             return config;
         }
 
@@ -56,21 +49,6 @@ namespace NearFuture
         public static bool VesselInAtmosphere(Vessel vessel)
         {
            return vessel.heightFromSurface < vessel.mainBody.maxAtmosphereAltitude;
-        }
-
-
-        // Simulates a vessel's solar exposure based on its orbit around a planet (eventually)
-        public static float SimulateVesselSolarExposure(Vessel curVessel)
-        {
-            //curVessel.
-
-            return 0f;
-        }
-
-        // Solar LOS calculation (eventually)
-        public static bool CalculateSolarLOS(Vessel curVessel)
-        {
-            return true;
         }
 
     }

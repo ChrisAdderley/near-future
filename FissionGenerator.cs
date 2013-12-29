@@ -151,7 +151,7 @@ namespace NearFuture
         [KSPEvent(guiName = "Refuel Reactor", externalToEVAOnly = true, unfocusedRange = 2f, guiActiveUnfocused = true)]
         public void RefuelReactor()
         {
-           // this.TryRefuel();
+           this.TryRefuel();
         }
 
 
@@ -345,14 +345,19 @@ namespace NearFuture
             // Fuel 
             GUI.BeginGroup(new Rect(120f, 105f, 380f, 60f));
             GUI.Label(new Rect(0f, 0f, 300f, 25f), "Core Lifetime (Current): " + FindTimeRemaining(BurnRate * coreTemperatureRatio));
-            GUI.Label(new Rect(0f, 30f, 300f, 25f), "Core Lifetime (Full Power): " + FindTimeRemaining(BurnRate));
+            GUI.Label(new Rect(0f, 24f, 300f, 25f), "Core Lifetime (Full Power): " + FindTimeRemaining(BurnRate));
 
             GUI.color = Color.white;
             GUI.EndGroup();
             GUI.EndGroup();
         }
 
-        
+        public override void OnLoad(ConfigNode node)
+        {
+            base.OnLoad(node);
+            this.moduleName = "Fission Reactor";
+        }
+
 
         public override void OnStart(PartModule.StartState state)
         {
@@ -554,7 +559,8 @@ namespace NearFuture
 
                 ShutdownReactor();
             }
-            this.part.RequestResource("ElectricCharge", -currentGeneration);
+           
+            this.part.RequestResource("ElectricCharge", -currentGeneration*TimeWarp.fixedDeltaTime);
 
 
         }
