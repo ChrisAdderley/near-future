@@ -1,4 +1,4 @@
-﻿/// FissionGeneratorRadiatorAnimator
+﻿/// FissionGeneratorRadiator
 /// ---------------------------------------------------
 /// Handles animation and fx for radiators
 
@@ -12,7 +12,6 @@ namespace NearFuture
 {
     class FissionRadiator: PartModule
     {
-
         // animation for deploying and retracting of radiators
         [KSPField(isPersistant = false)]
         public string DeployAnimation;

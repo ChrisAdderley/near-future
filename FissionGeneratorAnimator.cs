@@ -1,4 +1,4 @@
-﻿/// FissionGeneratorRadiatorAnimator
+﻿/// FissionGeneratorAnimator
 /// ---------------------------------------------------
 /// Handles animation for reactor heat
 

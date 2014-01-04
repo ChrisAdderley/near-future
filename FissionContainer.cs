@@ -1,6 +1,6 @@
 ﻿/// FissionContainer
 /// ---------------------------------------------------
-/// A container of fission fuel 
+/// A container of fission fuel used for refuelling
 
 using System;
 using System.Collections.Generic;

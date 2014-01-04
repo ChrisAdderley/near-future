@@ -1,6 +1,6 @@
 ﻿/// VariableIspEngine
 /// ---------------------------------------------------
-/// A module that allows the Isp and thrust of an engine to be varied
+/// A module that allows the Isp and thrust of an engine to be varied via a GUI
 /// 
 using System;
 using System.Collections.Generic;
@@ -25,19 +25,27 @@ namespace NearFuture
         [KSPField(isPersistant = false)]
         public float MaxThrustIsp;
 
+        // Minimum thrust
         [KSPField(isPersistant = false)]
-        public float MaxThrustFuelRatio;
+        public float MinThrust;
+
+        // Isp at minimum thrust
         [KSPField(isPersistant = false)]
-        public float MaxThrustEcRatio;
+        public float MinThrustIsp;
+
+        // Name of the fuel
         [KSPField(isPersistant = false)]
         public string FuelName;
 
+        // Ec to use
+        [KSPField(isPersistant = false)]
+        public float EnergyUsage = 100f;
 
+       // [KSPField(isPersistant = false, guiActive = true, guiName = "Variable Isp Setting")]
+       // public string CurThrustSettingGUI = "0%";
 
-        [KSPField(isPersistant = false, guiActive = true, guiName = "Variable Isp Setting")]
-        public string CurThrustSettingGUI = "0%";
-
-        [KSPField(isPersistant = true)]
+        // Current thrust setting
+        [KSPField(isPersistant = true, guiActive = true, guiActiveEditor = true, guiName = "Variable Thrust Level"), UI_FloatRange(minValue = 0f, maxValue = 100f, stepIncrement = 0.1f)]
         public float CurThrustSetting = 0f;
 
 
@@ -47,86 +55,50 @@ namespace NearFuture
                 String.Format("Isp at Maximum Thrust: {0:F0} s", MaxThrustIsp) + "\n";
         }
 
-        // Step for adjustments
-        [KSPField(isPersistant = false)]
-        public float VariableStep = 0.2f;
-
+        private float minThrust= 0f;
 
         private ModuleEngines engine;
         private Propellant ecPropellant;
         private Propellant fuelPropellant;
+
         private FloatCurve thrustCurve;
         private FloatCurve ispCurve;
         private FloatCurve ecCurve;
         private FloatCurve fuelCurve;
 
         private FloatCurve thrustAtmoCurve;
-        // Actions
-        [KSPEvent(guiActive = true, guiName = "Increase Thrust", active = true)]
-        public void IncreaseThrustGUI()
-        {
-            IncreaseVariableThrust();
-        }
-
-        [KSPEvent(guiActive = true, guiName = "Decrease Thrust", active = true)]
-        public void DecreaseThrustGUI()
-        {
-            DecreaseVariableThrust();
-        }
-
-
-        [KSPAction("Increase Thrust")]
-        public void IncreaseThrustAction(KSPActionParam param) 
-        {
-            IncreaseVariableThrust();
-        }
-
-        [KSPAction("Decrease Thrust")]
-        public void DecreaseThrustAction(KSPActionParam param)
-        {
-            DecreaseVariableThrust();
-        }
-
-
-
-        public void IncreaseVariableThrust()
-        {
-            CurThrustSetting = Mathf.Clamp01(CurThrustSetting + VariableStep);
-            // adjust isp
-            engine.atmosphereCurve = new FloatCurve();
-            engine.atmosphereCurve.Add(0f, ispCurve.Evaluate(CurThrustSetting));
-            engine.atmosphereCurve.Add(1f, 200f);
-
-            fuelPropellant.ratio = fuelCurve.Evaluate(CurThrustSetting);
-            ecPropellant.ratio = ecCurve.Evaluate(CurThrustSetting);
-
-            // adjust thrust
-            engine.maxThrust = thrustCurve.Evaluate(CurThrustSetting);
-
-            CurThrustSettingGUI = String.Format("{0:F0}%", CurThrustSetting*100f);
-        }
-
-        public void DecreaseVariableThrust()
-        {
-            CurThrustSetting = Mathf.Clamp01(CurThrustSetting - VariableStep);
-            // adjust isp
-            engine.atmosphereCurve = new FloatCurve();
-            engine.atmosphereCurve.Add(0f, ispCurve.Evaluate(CurThrustSetting));
-            engine.atmosphereCurve.Add(1f, 200f);
-
-            fuelPropellant.ratio = fuelCurve.Evaluate(CurThrustSetting);
-            ecPropellant.ratio = ecCurve.Evaluate(CurThrustSetting);
-
-            // adjust thrust
-            engine.maxThrust = thrustCurve.Evaluate(CurThrustSetting);
-            CurThrustSettingGUI = String.Format("{0:F0}%", CurThrustSetting * 100f);
-        }
+       
 
         public override void OnLoad(ConfigNode node)
         {
             base.OnLoad(node);
             this.moduleName = "Variable ISP Engine";
         }
+
+        private void ChangeIspAndThrust()
+        {
+            engine.atmosphereCurve = new FloatCurve();
+            engine.atmosphereCurve.Add(0f, Mathf.Lerp(MinThrustIsp ,MaxThrustIsp,CurThrustSetting/100f));
+
+            //thrustAtmoCurve.Add(0f, thrustCurve.Evaluate(CurThrustSetting));
+            //thrustAtmoCurve.Add(1f, 0f);
+
+            engine.maxThrust = Mathf.Lerp(MinThrust, MaxThrust, CurThrustSetting / 100f);
+
+            RecalculateRatios(engine.maxThrust, Mathf.Lerp(MinThrustIsp, MaxThrustIsp, CurThrustSetting / 100f));
+        }
+
+        private void RecalculateRatios(float desiredthrust, float desiredisp)
+        {
+            double fuelDensity = PartResourceLibrary.Instance.GetDefinition(fuelPropellant.name).density;
+            double fuelRate = ((desiredthrust * 1000f) / (desiredisp * 9.82d)) / (fuelDensity*1000f);
+            float ecRate = EnergyUsage / (float)fuelRate;
+
+            fuelPropellant.ratio = 0.1f;
+            ecPropellant.ratio = fuelPropellant.ratio * ecRate;
+        }
+
+
 
         public override void OnStart(PartModule.StartState state)
         {
@@ -142,47 +114,37 @@ namespace NearFuture
             if (engine != null)
                 Debug.Log("NFPP: Engine Check Passed");
 
-            thrustCurve = new FloatCurve();
-            ispCurve = new FloatCurve();
-            ecCurve = new FloatCurve();
-            fuelCurve = new FloatCurve();
-            thrustAtmoCurve = new FloatCurve();
 
-            // get thrust at setting 0 from ModuleEngines
-            thrustCurve.Add(0f,engine.maxThrust);
-            thrustCurve.Add(1f,MaxThrust);
-            
-            // get isp at setting 0 from ModuleEngines
-            ispCurve.Add(0f,engine.atmosphereCurve.Evaluate(0f));
-            ispCurve.Add(1f,MaxThrustIsp);
-            
+          
+
             foreach (Propellant prop in engine.propellants)
             {
                 if (prop.name == FuelName)
                     fuelPropellant = prop;
                 if (prop.name == "ElectricCharge")
-                    ecPropellant = prop;    
+                    ecPropellant = prop;
             }
 
-            fuelCurve.Add(0f, fuelPropellant.ratio);
-            fuelCurve.Add(1f, MaxThrustFuelRatio);
+    
 
-            ecCurve.Add(0f, ecPropellant.ratio);
-            ecCurve.Add(1f, MaxThrustEcRatio);
+            ChangeIspAndThrust();
 
-            fuelPropellant.ratio = fuelCurve.Evaluate(CurThrustSetting);
-            ecPropellant.ratio = ecCurve.Evaluate(CurThrustSetting);
-
-            // adjust isp
-            engine.atmosphereCurve = new FloatCurve();
-            engine.atmosphereCurve.Add(0f, ispCurve.Evaluate(CurThrustSetting));
-            engine.atmosphereCurve.Add(1f, 200f);
-            // adjust thrust
-            engine.maxThrust = thrustCurve.Evaluate(CurThrustSetting);
-
-            CurThrustSettingGUI = String.Format("{0:F0}%", CurThrustSetting * 100f);
+            //CurThrustSettingGUI = String.Format("{0:F0}%", CurThrustSetting * 100f);
 
             Debug.Log("NFPP: Variable ISP engine setup complete");
+        }
+
+        int frameCounter = 0;
+
+        public override void OnFixedUpdate()
+        {
+            frameCounter++;
+            if (frameCounter >= 10)
+            {
+                ChangeIspAndThrust();
+                frameCounter = 0;
+            }
+           // engine.maxThrust = thrustAtmoCurve.Evaluate((float)FlightGlobals.getStaticPressure(vessel.transform.position));
         }
 
     }

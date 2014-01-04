@@ -1,8 +1,7 @@
 ﻿/// FissionGenerator
 /// ---------------------------------------------------
-/// FissionGeenrator part module
-
-/// TODO: Figure out how to refresh UI widgets for deploy/retract radiators
+/// Fission Generator that uses EnrichedUranium to generate fuel
+/// 
 
 using System;
 using System.Collections.Generic;

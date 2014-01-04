@@ -1,4 +1,8 @@
-﻿using System;
+﻿/// ElectricEngineThrustLimiter
+/// ---------------------------
+/// Module that limits the thrust of an engine while in an atmosphere instead of changing ISP
+/// 
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
@@ -34,7 +38,8 @@ namespace NearFuture
         }
         public override void OnFixedUpdate()
         {
-            engine.maxThrust = ThrustCurve.Evaluate((float)FlightGlobals.getStaticPressure(vessel.transform.position));
+            
+            engine.maxThrust =  ThrustCurve.Evaluate((float)FlightGlobals.getStaticPressure(vessel.transform.position));
         }
 
 

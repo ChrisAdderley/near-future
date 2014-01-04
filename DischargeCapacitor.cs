@@ -23,7 +23,7 @@ namespace NearFuture
 
         // Discharge Rate
         [KSPField(isPersistant = false)]
-        public float DischargeRate;
+        public float DischargeRate = 10f;
         // Charge Rate
         [KSPField(isPersistant = false)]
         public float ChargeRate;
@@ -64,7 +64,7 @@ namespace NearFuture
            
             Enabled = false;
         }
-       
+
 
 
         [KSPAction("Discharge Capacitor")]
@@ -82,12 +82,18 @@ namespace NearFuture
             Enabled = !Enabled;
         }
 
+        // Tweakable parameters
+        [KSPField(isPersistant = true, guiActive = true, guiActiveEditor = true, guiName = "Percent Power"), UI_FloatRange(minValue = 50f, maxValue = 100f , stepIncrement = 0.1f)]
+        public float dischargeSlider = 100f;
+
+        [KSPField(isPersistant = true, guiActive = true, guiActiveEditor = true, guiName = "Adjusted Discharge Rate")]
+        public float dischargeActual = 100f;
 
         private AnimationState[] capacityState;
 
         public override string GetInfo()
         {
-            return String.Format("Discharge Rate: {0:F2}/s", DischargeRate) + "\n" + String.Format("Charge Rate: {0:F2}/s", ChargeRate) + "\n" + String.Format("Efficiency: {0:F2}%", ChargeRatio*100f);
+            return String.Format("Maximum Discharge Rate: {0:F2}/s", DischargeRate) + "\n" + String.Format("Charge Rate: {0:F2}/s", ChargeRate) + "\n" + String.Format("Efficiency: {0:F2}%", ChargeRatio*100f);
         }
 
 
@@ -99,7 +105,6 @@ namespace NearFuture
 
         public override void OnStart(PartModule.StartState state)
         {
-            
             this.part.force_activate();
             capacityState = Utils.SetUpAnimation(ChargeAnimation, this.part);
 
@@ -112,6 +117,11 @@ namespace NearFuture
         }
 
 
+        private void Update()
+        {
+            dischargeActual = (dischargeSlider / 100f) * DischargeRate;
+        }
+
         public override void OnUpdate()
         {
    
@@ -121,6 +131,7 @@ namespace NearFuture
                 Events["Enable"].active = !Enabled;
 
            }
+            
         }
 
 
@@ -135,13 +146,13 @@ namespace NearFuture
                 }
 
 
-                float amt = TimeWarp.fixedDeltaTime * DischargeRate;
+                float amt = TimeWarp.fixedDeltaTime * (dischargeSlider/100f )* DischargeRate;
                     
                 this.part.RequestResource("StoredCharge", amt);
                 this.part.RequestResource("ElectricCharge", -amt);
                 currentCharge = currentCharge - amt;
 
-                CapacitorStatus = String.Format("Discharging: {0:F2}/s", DischargeRate);
+                CapacitorStatus = String.Format("Discharging: {0:F2}/s", DischargeRate*(dischargeSlider / 100f));
 
                 // if the amount returned is zero, disable discharging
                 if (currentCharge <= 0f)

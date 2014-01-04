@@ -25,7 +25,7 @@
   <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Release|AnyCPU' ">
     <DebugType>none</DebugType>
     <Optimize>true</Optimize>
-    <OutputPath>G:\Games\Steam\SteamApps\common\Kerbal Space Program\GameData\NearFuture\Plugins\</OutputPath>
+    <OutputPath>C:\Program Files %28x86%29\Steam\SteamApps\common\Kerbal Space Program\GameData\NearFuture\Plugins\</OutputPath>
     <DefineConstants>TRACE</DefineConstants>
     <ErrorReport>prompt</ErrorReport>
     <WarningLevel>4</WarningLevel>
@@ -52,7 +52,6 @@
     <Compile Include="FissionContainer.cs" />
     <Compile Include="FissionGeneratorAnimator.cs" />
     <Compile Include="FissionRadiator.cs" />
-    <Compile Include="PowerTransmitter.cs" />
     <Compile Include="Resources.cs" />
     <Compile Include="VariableIspEngine.cs" />
     <Compile Include="DischargeCapacitor.cs" />
