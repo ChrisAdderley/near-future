@@ -61,11 +61,6 @@ namespace NearFuture
         private Propellant ecPropellant;
         private Propellant fuelPropellant;
 
-        private FloatCurve thrustCurve;
-        private FloatCurve ispCurve;
-        private FloatCurve ecCurve;
-        private FloatCurve fuelCurve;
-
         private FloatCurve thrustAtmoCurve;
        
 
@@ -80,8 +75,9 @@ namespace NearFuture
             engine.atmosphereCurve = new FloatCurve();
             engine.atmosphereCurve.Add(0f, Mathf.Lerp(MinThrustIsp ,MaxThrustIsp,CurThrustSetting/100f));
 
-            //thrustAtmoCurve.Add(0f, thrustCurve.Evaluate(CurThrustSetting));
-            //thrustAtmoCurve.Add(1f, 0f);
+            thrustAtmoCurve = new FloatCurve();
+            thrustAtmoCurve.Add(0f, Mathf.Lerp(MinThrust, MaxThrust, CurThrustSetting / 100f));
+            thrustAtmoCurve.Add(1f, 0f);
 
             engine.maxThrust = Mathf.Lerp(MinThrust, MaxThrust, CurThrustSetting / 100f);
 
@@ -142,9 +138,12 @@ namespace NearFuture
             if (frameCounter >= 10)
             {
                 ChangeIspAndThrust();
+
+                engine.maxThrust = thrustAtmoCurve.Evaluate((float)FlightGlobals.getStaticPressure(vessel.transform.position));
                 frameCounter = 0;
+
             }
-           // engine.maxThrust = thrustAtmoCurve.Evaluate((float)FlightGlobals.getStaticPressure(vessel.transform.position));
+            
         }
 
     }
