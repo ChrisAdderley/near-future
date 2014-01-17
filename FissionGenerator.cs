@@ -17,6 +17,14 @@ namespace NearFuture
 
         /// KSPFIELD
         /// 
+
+        // Use a staging icon
+        [KSPField(isPersistant = false)]
+        public bool UseStagingIcon = true;
+        // Force activate on load
+        [KSPField(isPersistant = false)]
+        public bool UseForcedActivation = true;
+
         // Is reactor online?
         [KSPField(isPersistant = true)]
         public bool Enabled;
@@ -360,8 +368,8 @@ namespace NearFuture
 
         public override void OnStart(PartModule.StartState state)
         {
-
-            this.part.stagingIcon = "FUEL_TANK";
+            if (UseStagingIcon)
+                this.part.stagingIcon = "FUEL_TANK";
 
             PressureCurve = new FloatCurve();
             PressureCurve.Add(0f, 0f);
@@ -371,19 +379,22 @@ namespace NearFuture
 
             if (state != StartState.Editor)
             {
-                infoBox = this.part.stackIcon.DisplayInfo();
+                if (UseStagingIcon)
+                {
+                    infoBox = this.part.stackIcon.DisplayInfo();
 
-                infoBox.SetMsgBgColor(XKCDColors.RedOrange);
-                infoBox.SetMsgTextColor(XKCDColors.Orange);
-                infoBox.SetLength(1.0f);
-                infoBox.SetMessage("CoreHeat");
-                infoBox.SetProgressBarBgColor(XKCDColors.RedOrange);
-                infoBox.SetProgressBarColor(XKCDColors.Orange);
-
+                    infoBox.SetMsgBgColor(XKCDColors.RedOrange);
+                    infoBox.SetMsgTextColor(XKCDColors.Orange);
+                    infoBox.SetLength(1.0f);
+                    infoBox.SetMessage("CoreHeat");
+                    infoBox.SetProgressBarBgColor(XKCDColors.RedOrange);
+                    infoBox.SetProgressBarColor(XKCDColors.Orange);
+                }
                 generatorAnimation = part.Modules.OfType<FissionGeneratorAnimator>().First();
                 SetupRadiators();
 
-                this.part.force_activate();
+                if (UseForcedActivation)
+                    this.part.force_activate();
                 RenderingManager.AddToPostDrawQueue(0, DrawGUI);
             }
 
@@ -499,13 +510,15 @@ namespace NearFuture
             {
                 // increase the overheat amount
                 overheatAmount += TimeWarp.fixedDeltaTime * (wattsError / (this.part.mass * 500f));
-                infoBox.SetValue(Mathf.Clamp01((CurrentCoreTemperature - MaxCoreTemperature) / (MeltdownCoreTemperature - MaxCoreTemperature)));
+                if (UseStagingIcon)
+                    infoBox.SetValue(Mathf.Clamp01((CurrentCoreTemperature - MaxCoreTemperature) / (MeltdownCoreTemperature - MaxCoreTemperature)));
             }
             else
             {
                 //overheatAmount += TimeWarp.fixedDeltaTime * (wattsError / (this.part.mass * 500f));
                 overheatAmount = Mathf.MoveTowards(overheatAmount, 0f, TimeWarp.fixedDeltaTime * Mathf.Max((wattsError / (this.part.mass * 500f)), 1f));
-                infoBox.SetValue(Mathf.Clamp01((CurrentCoreTemperature - MaxCoreTemperature) / (MeltdownCoreTemperature - MaxCoreTemperature)));
+                if (UseStagingIcon)
+                    infoBox.SetValue(Mathf.Clamp01((CurrentCoreTemperature - MaxCoreTemperature) / (MeltdownCoreTemperature - MaxCoreTemperature)));
             }
             //Debug.Log("Overheat total: " + overheatAmount.ToString());
             goalTemperature = (float)thermalPowerRatio * MaxCoreTemperature + Mathf.Clamp(overheatAmount, 0f, 5000f);

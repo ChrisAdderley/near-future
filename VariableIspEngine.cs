@@ -13,9 +13,14 @@ namespace NearFuture
 {
     class VariableISPEngine:PartModule
     {
-        
 
+        // Use the direct throttle method
+        [KSPField(isPersistant = false)]
+        public bool UseDirectThrottle = false;
 
+        // Link all engines
+        [KSPField(isPersistant = true)]
+        public bool LinkAllEngines = false;
        
         // Maximum thrust
         [KSPField(isPersistant = false)]
@@ -48,6 +53,37 @@ namespace NearFuture
         [KSPField(isPersistant = true, guiActive = true, guiActiveEditor = true, guiName = "Variable Thrust Level"), UI_FloatRange(minValue = 0f, maxValue = 100f, stepIncrement = 0.1f)]
         public float CurThrustSetting = 0f;
 
+        [KSPEvent(guiActive = true, guiName = "Link all Variable Engines", active = true)]
+        public void LinkEngines()
+        {
+            LinkAllEngines = true;
+        }
+        // Retract all radiators attached to this reactor
+        [KSPEvent(guiActive = false, guiName = "Unlink all Variable Engines", active = false)]
+        public void UnlinkEngines()
+        {
+            LinkAllEngines = false;
+        }
+
+        // Actions
+        [KSPAction("Link Engines")]
+        public void LinkEnginesAction(KSPActionParam param)
+        {
+            LinkEngines();
+        }
+
+        [KSPAction("Unlink Engines")]
+        public void UnlinkEnginesAction(KSPActionParam param)
+        {
+            UnlinkEngines();
+        }
+
+        [KSPAction("Toggle Link Engines")]
+        public void ToggleLinkEnginesAction(KSPActionParam param)
+        {
+            LinkAllEngines = !LinkAllEngines;
+        }
+
 
         public override string GetInfo()
         {
@@ -57,7 +93,7 @@ namespace NearFuture
 
         private float minThrust= 0f;
 
-        private ModuleEngines engine;
+        private ModuleEnginesFX engine;
         private Propellant ecPropellant;
         private Propellant fuelPropellant;
 
@@ -70,18 +106,18 @@ namespace NearFuture
             this.moduleName = "Variable ISP Engine";
         }
 
-        private void ChangeIspAndThrust()
+        public void ChangeIspAndThrust(float level)
         {
             engine.atmosphereCurve = new FloatCurve();
-            engine.atmosphereCurve.Add(0f, Mathf.Lerp(MinThrustIsp ,MaxThrustIsp,CurThrustSetting/100f));
+            engine.atmosphereCurve.Add(0f, Mathf.Lerp(MinThrustIsp ,MaxThrustIsp,level));
 
             thrustAtmoCurve = new FloatCurve();
-            thrustAtmoCurve.Add(0f, Mathf.Lerp(MinThrust, MaxThrust, CurThrustSetting / 100f));
+            thrustAtmoCurve.Add(0f, Mathf.Lerp(MinThrust, MaxThrust, level));
             thrustAtmoCurve.Add(1f, 0f);
 
-            engine.maxThrust = Mathf.Lerp(MinThrust, MaxThrust, CurThrustSetting / 100f);
+            engine.maxThrust = Mathf.Lerp(MinThrust, MaxThrust, level);
 
-            RecalculateRatios(engine.maxThrust, Mathf.Lerp(MinThrustIsp, MaxThrustIsp, CurThrustSetting / 100f));
+            RecalculateRatios(engine.maxThrust, Mathf.Lerp(MinThrustIsp, MaxThrustIsp, level));
         }
 
         private void RecalculateRatios(float desiredthrust, float desiredisp)
@@ -104,14 +140,11 @@ namespace NearFuture
             for (int i = 0; i < pml.Count; i++)
             {
                 PartModule curModule = pml.GetModule(i);
-                engine  = curModule.GetComponent<ModuleEngines>();
+                engine  = curModule.GetComponent<ModuleEnginesFX>();
             }
 
             if (engine != null)
                 Debug.Log("NFPP: Engine Check Passed");
-
-
-          
 
             foreach (Propellant prop in engine.propellants)
             {
@@ -121,27 +154,74 @@ namespace NearFuture
                     ecPropellant = prop;
             }
 
-    
 
-            ChangeIspAndThrust();
-
-            //CurThrustSettingGUI = String.Format("{0:F0}%", CurThrustSetting * 100f);
+            if (UseDirectThrottle)
+                ChangeIspAndThrust(engine.requestedThrottle);
+            else
+                ChangeIspAndThrust(CurThrustSetting / 100f);
 
             Debug.Log("NFPP: Variable ISP engine setup complete");
+            if (UseDirectThrottle)
+            {
+                Debug.Log("NFPP: Using direct throttle method");
+            }
         }
 
         int frameCounter = 0;
+        float lastThrottle = -1f;
 
-        public override void OnFixedUpdate()
+        public void ResetFrameCount()
         {
-            frameCounter++;
-            if (frameCounter >= 10)
+            frameCounter = 0;
+        }
+
+        public void Update()
+        {
+            if ((LinkAllEngines && Events["LinkEngines"].active) || (!LinkAllEngines && Events["UnlinkEngines"].active))
             {
-                ChangeIspAndThrust();
+                Events["LinkEngines"].active = !LinkAllEngines;
+                Events["UnlinkEngines"].active = LinkAllEngines;
+            }
+        }
 
-                engine.maxThrust = thrustAtmoCurve.Evaluate((float)FlightGlobals.getStaticPressure(vessel.transform.position));
-                frameCounter = 0;
-
+        public void FixedUpdate()
+        {
+            if (engine != null)
+            {
+                if (UseDirectThrottle)
+                {
+                    float throttleAmt = engine.requestedThrottle;
+                    Debug.Log(throttleAmt);
+                     if (throttleAmt != lastThrottle)
+                     {
+                         ChangeIspAndThrust(throttleAmt);
+                         engine.maxThrust = thrustAtmoCurve.Evaluate((float)FlightGlobals.getStaticPressure(vessel.transform.position));
+                         lastThrottle = throttleAmt;
+                     }
+                     CurThrustSetting = engine.requestedThrottle * 100f;
+                }
+                else
+                {
+                    frameCounter++;
+                    if (frameCounter >= 10)
+                    {
+                        
+                        if (LinkAllEngines)
+                        {
+                            VariableISPEngine[] allVariableEngines = part.vessel.GetComponentsInChildren<VariableISPEngine>();
+                            foreach (VariableISPEngine variableEngine in allVariableEngines)
+                            {
+                                variableEngine.ChangeIspAndThrust(CurThrustSetting / 100f);
+                                variableEngine.ResetFrameCount();
+                            }
+                        } else 
+                        {
+                            ChangeIspAndThrust(CurThrustSetting / 100f);
+                        }
+                        engine.maxThrust = thrustAtmoCurve.Evaluate((float)FlightGlobals.getStaticPressure(vessel.transform.position));
+                        frameCounter = 0;
+                    }
+                }
             }
             
         }

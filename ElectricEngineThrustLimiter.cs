@@ -6,6 +6,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
+using UnityEngine;
 
 namespace NearFuture
 {
@@ -20,7 +21,7 @@ namespace NearFuture
 
 
         private FloatCurve ThrustCurve;
-        private ModuleEngines engine;
+        private ModuleEnginesFX engine;
 
         public override void OnLoad(ConfigNode node)
         {
@@ -30,16 +31,25 @@ namespace NearFuture
         public override void OnStart(PartModule.StartState state)
         {
             base.OnStart(state);
-            engine = part.GetComponent<ModuleEngines>();
+            engine = part.GetComponent<ModuleEnginesFX>();
 
             ThrustCurve = new FloatCurve();
             ThrustCurve.Add(0f, engine.maxThrust);
             ThrustCurve.Add(minPressure, minThrust);
         }
-        public override void OnFixedUpdate()
+        public void FixedUpdate()
         {
-            
-            engine.maxThrust =  ThrustCurve.Evaluate((float)FlightGlobals.getStaticPressure(vessel.transform.position));
+            //engine.finalThrust
+
+            if (engine != null)
+            {
+                Transform engineVector = engine.thrustTransforms[0];
+                Rigidbody partRB = part.Rigidbody;
+                Debug.Log(engine.finalThrust);
+                partRB.AddForceAtPosition(engineVector.forward*engine.finalThrust*ThrustCurve.Evaluate((float)FlightGlobals.getStaticPressure(vessel.transform.position)),engineVector.position);
+                
+            }
+             //   engine.maxThrust =  ThrustCurve.Evaluate((float)FlightGlobals.getStaticPressure(vessel.transform.position));
         }
 
 
