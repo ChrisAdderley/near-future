@@ -53,13 +53,13 @@ namespace NearFuture
         [KSPField(isPersistant = true, guiActive = true, guiActiveEditor = true, guiName = "Variable Thrust Level"), UI_FloatRange(minValue = 0f, maxValue = 100f, stepIncrement = 0.1f)]
         public float CurThrustSetting = 0f;
 
-        [KSPEvent(guiActive = true, guiName = "Link all Variable Engines", active = true)]
+        [KSPEvent(guiActive = true, guiName = "Link All Variable Engines", active = true)]
         public void LinkEngines()
         {
             LinkAllEngines = true;
         }
         // Retract all radiators attached to this reactor
-        [KSPEvent(guiActive = false, guiName = "Unlink all Variable Engines", active = false)]
+        [KSPEvent(guiActive = true, guiName = "Unlink All Variable Engines", active = false)]
         public void UnlinkEngines()
         {
             LinkAllEngines = false;
@@ -130,11 +130,12 @@ namespace NearFuture
             ecPropellant.ratio = fuelPropellant.ratio * ecRate;
         }
 
-
-
         public override void OnStart(PartModule.StartState state)
         {
-            
+            if (state != StartState.Editor)
+                started = true;
+            else
+                started = false;
             // Get moduleEngines
             PartModuleList pml = this.part.Modules;
             for (int i = 0; i < pml.Count; i++)
@@ -160,6 +161,9 @@ namespace NearFuture
             else
                 ChangeIspAndThrust(CurThrustSetting / 100f);
 
+            if (state != StartState.Editor)
+                SetupVariableEngines();
+
             Debug.Log("NFPP: Variable ISP engine setup complete");
             if (UseDirectThrottle)
             {
@@ -167,15 +171,47 @@ namespace NearFuture
             }
         }
 
+        private void SetupVariableEngines()
+        {
+            allVariableEngines = new List<VariableISPEngine>();
+
+            List<Part> allParts = this.vessel.parts;
+            foreach (Part pt in allParts)
+            {
+
+                PartModuleList pml = pt.Modules;
+                for (int i = 0; i < pml.Count; i++)
+                {
+                    PartModule curModule = pml.GetModule(i);
+                    VariableISPEngine candidate = curModule.GetComponent<VariableISPEngine>();
+
+                    if (candidate != null && candidate != this && !allVariableEngines.Contains(candidate ) )
+                        allVariableEngines.Add(candidate);
+                }
+
+            }
+        }
+
         int frameCounter = 0;
         float lastThrottle = -1f;
+        float lastThrustSetting = -1f;
+
+        List<VariableISPEngine> allVariableEngines;
+
+        public void ChangeIspAndThrustLinked(float level)
+        {
+            //ChangeIspAndThrust(level);
+            ResetFrameCount();
+            LinkAllEngines = true;
+            CurThrustSetting = level * 100f;
+        }
 
         public void ResetFrameCount()
         {
-            frameCounter = 0;
+          //  frameCounter = 0;
         }
 
-        public void Update()
+        public override void OnUpdate()
         {
             if ((LinkAllEngines && Events["LinkEngines"].active) || (!LinkAllEngines && Events["UnlinkEngines"].active))
             {
@@ -184,9 +220,11 @@ namespace NearFuture
             }
         }
 
+        bool started = false;
+
         public void FixedUpdate()
         {
-            if (engine != null)
+            if (engine != null && started)
             {
                 if (UseDirectThrottle)
                 {
@@ -202,21 +240,22 @@ namespace NearFuture
                 }
                 else
                 {
+                    if (LinkAllEngines)
+                    {
+                        //Debug.Log("NFPP: VariableEngineCount is " + allVariableEngines.Count.ToString());
+                        foreach (VariableISPEngine variableEngine in allVariableEngines)
+                        {
+                            variableEngine.ChangeIspAndThrustLinked(CurThrustSetting / 100f);
+                        }
+                    }
+
                     frameCounter++;
                     if (frameCounter >= 10)
                     {
-                        
-                        if (LinkAllEngines)
-                        {
-                            VariableISPEngine[] allVariableEngines = part.vessel.GetComponentsInChildren<VariableISPEngine>();
-                            foreach (VariableISPEngine variableEngine in allVariableEngines)
-                            {
-                                variableEngine.ChangeIspAndThrust(CurThrustSetting / 100f);
-                                variableEngine.ResetFrameCount();
-                            }
-                        } else 
+                        if (CurThrustSetting != lastThrustSetting)
                         {
                             ChangeIspAndThrust(CurThrustSetting / 100f);
+                            lastThrustSetting = CurThrustSetting;
                         }
                         engine.maxThrust = thrustAtmoCurve.Evaluate((float)FlightGlobals.getStaticPressure(vessel.transform.position));
                         frameCounter = 0;

@@ -21,37 +21,63 @@ namespace NearFuture
 
 
         private FloatCurve ThrustCurve;
+        private FloatCurve AtmoCurve;
         private ModuleEnginesFX engine;
 
         public override void OnLoad(ConfigNode node)
         {
             base.OnLoad(node);
-            
+
         }
         public override void OnStart(PartModule.StartState state)
         {
             base.OnStart(state);
             engine = part.GetComponent<ModuleEnginesFX>();
 
+            Propellant fuelPropellant = new Propellant();
+            foreach (Propellant prop in engine.propellants)
+            {
+     
+                if (prop.name != "ElectricCharge")
+                    fuelPropellant = prop;
+            }
+
             ThrustCurve = new FloatCurve();
             ThrustCurve.Add(0f, engine.maxThrust);
             ThrustCurve.Add(minPressure, minThrust);
+
+            AtmoCurve = new FloatCurve();
+            AtmoCurve.Add(0f, engine.atmosphereCurve.Evaluate(0f));
+
+            float rate = FindFlowRate (engine.maxThrust,engine.atmosphereCurve.Evaluate(0f),fuelPropellant); 
+
+            AtmoCurve.Add(1f,FindIsp(minThrust,rate,fuelPropellant));
         }
-        public void FixedUpdate()
+
+        // finds the flow rate given thrust, isp and the propellant 
+        private float FindFlowRate(float thrust, float isp,Propellant fuelPropellant)
         {
-            //engine.finalThrust
-
-            if (engine != null)
-            {
-                Transform engineVector = engine.thrustTransforms[0];
-                Rigidbody partRB = part.Rigidbody;
-                Debug.Log(engine.finalThrust);
-                partRB.AddForceAtPosition(engineVector.forward*engine.finalThrust*ThrustCurve.Evaluate((float)FlightGlobals.getStaticPressure(vessel.transform.position)),engineVector.position);
-                
-            }
-             //   engine.maxThrust =  ThrustCurve.Evaluate((float)FlightGlobals.getStaticPressure(vessel.transform.position));
+             double fuelDensity = PartResourceLibrary.Instance.GetDefinition(fuelPropellant.name).density;
+             double fuelRate = ((thrust * 1000f) / (isp * 9.82d)) / (fuelDensity*1000f);
+             return (float)fuelRate;
         }
 
+        private float FindIsp(float thrust, float flowRate, Propellant fuelPropellant)
+        {
+            double fuelDensity = PartResourceLibrary.Instance.GetDefinition(fuelPropellant.name).density;
+            double isp = (((minThrust * 1000f) / ( 9.82d)) / flowRate) / (fuelDensity * 1000f);
+            return (float)isp;
+        }
+
+        public override void OnFixedUpdate()
+        {
+
+            engine.maxThrust = ThrustCurve.Evaluate((float)FlightGlobals.getStaticPressure(vessel.transform.position));
+            engine.atmosphereCurve = new FloatCurve();
+            engine.atmosphereCurve.Add(0f, AtmoCurve.Evaluate((float)FlightGlobals.getStaticPressure(vessel.transform.position)));
+        }
+
+        
 
     }
 }

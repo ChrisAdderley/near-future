@@ -48,6 +48,7 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="ElectricEngineThrustLimiter.cs" />
+    <Compile Include="FissionReprocessor.cs" />
     <Compile Include="NearFuture.cs" />
     <Compile Include="FissionContainer.cs" />
     <Compile Include="FissionGeneratorAnimator.cs" />
