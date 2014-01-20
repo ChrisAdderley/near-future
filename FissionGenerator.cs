@@ -29,6 +29,10 @@ namespace NearFuture
         [KSPField(isPersistant = true)]
         public bool Enabled;
 
+        // LastFuelUpdate
+        [KSPField(isPersistant = true)]
+        public float LastFuelUpdate = 0f;
+
         // Maximum power generation
          [KSPField(isPersistant = false)]
         public float PowerGenerationMaximum;
@@ -370,6 +374,8 @@ namespace NearFuture
         {
             if (UseStagingIcon)
                 this.part.stagingIcon = "FUEL_TANK";
+            else 
+                Debug.Log("NFPP:Reactor Staging Icon Disabled");
 
             PressureCurve = new FloatCurve();
             PressureCurve.Add(0f, 0f);
@@ -396,6 +402,8 @@ namespace NearFuture
                 if (UseForcedActivation)
                     this.part.force_activate();
                 RenderingManager.AddToPostDrawQueue(0, DrawGUI);
+
+                FuelUpdate();
             }
 
             // LogItAll();
@@ -403,6 +411,19 @@ namespace NearFuture
         }
 
 
+        private void FuelUpdate()
+        {
+            Debug.Log("NFPP: Checking Reactor Nonfocused use");
+            if (LastFuelUpdate == 0f)
+                return;
+
+            double timeElapsed = vessel.missionTime - (double)LastFuelUpdate;
+            Debug.Log("NFPP: Time unfocused is " + timeElapsed.ToString() + "s");
+            float fuelUsage = (float)(((CurrentCoreTemperature / MaxCoreTemperature)) * BurnRate * timeElapsed);
+            double fuelAmt = this.part.RequestResource("EnrichedUranium", fuelUsage);
+            this.part.RequestResource("DepletedUranium", -fuelAmt);
+            Debug.Log("NFPP: Removed Uranium: " + fuelAmt.ToString());        
+        }
 
 
         // Gets all attached radiators
@@ -498,7 +519,7 @@ namespace NearFuture
             {
                 wattsGoal = 0f;
             }
-
+            
             currentThermalPower = Mathf.MoveTowards(currentThermalPower, wattsGoal, TimeWarp.fixedDeltaTime * ThermalPowerResponseRate);
             thermalPowerRatio = (double)(currentThermalPower / ThermalPower);
 
@@ -571,6 +592,8 @@ namespace NearFuture
 
                 ShutdownReactor();
             }
+
+            LastFuelUpdate = (float)vessel.missionTime;
            
             this.part.RequestResource("ElectricCharge", -currentGeneration*TimeWarp.fixedDeltaTime);
 

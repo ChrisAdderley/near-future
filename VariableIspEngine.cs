@@ -46,9 +46,6 @@ namespace NearFuture
         [KSPField(isPersistant = false)]
         public float EnergyUsage = 100f;
 
-       // [KSPField(isPersistant = false, guiActive = true, guiName = "Variable Isp Setting")]
-       // public string CurThrustSettingGUI = "0%";
-
         // Current thrust setting
         [KSPField(isPersistant = true, guiActive = true, guiActiveEditor = true, guiName = "Variable Thrust Level"), UI_FloatRange(minValue = 0f, maxValue = 100f, stepIncrement = 0.1f)]
         public float CurThrustSetting = 0f;
@@ -97,7 +94,10 @@ namespace NearFuture
         private Propellant ecPropellant;
         private Propellant fuelPropellant;
 
-        private FloatCurve thrustAtmoCurve;
+
+        private FloatCurve ThrustCurve;
+        private FloatCurve AtmoCurve;
+
        
 
         public override void OnLoad(ConfigNode node)
@@ -111,9 +111,7 @@ namespace NearFuture
             engine.atmosphereCurve = new FloatCurve();
             engine.atmosphereCurve.Add(0f, Mathf.Lerp(MinThrustIsp ,MaxThrustIsp,level));
 
-            thrustAtmoCurve = new FloatCurve();
-            thrustAtmoCurve.Add(0f, Mathf.Lerp(MinThrust, MaxThrust, level));
-            thrustAtmoCurve.Add(1f, 0f);
+        
 
             engine.maxThrust = Mathf.Lerp(MinThrust, MaxThrust, level);
 
@@ -128,6 +126,10 @@ namespace NearFuture
 
             fuelPropellant.ratio = 0.1f;
             ecPropellant.ratio = fuelPropellant.ratio * ecRate;
+
+            CalculateCurves();
+
+
         }
 
         public override void OnStart(PartModule.StartState state)
@@ -155,6 +157,8 @@ namespace NearFuture
                     ecPropellant = prop;
             }
 
+            
+
 
             if (UseDirectThrottle)
                 ChangeIspAndThrust(engine.requestedThrottle);
@@ -164,12 +168,45 @@ namespace NearFuture
             if (state != StartState.Editor)
                 SetupVariableEngines();
 
+
+            CalculateCurves();
+
             Debug.Log("NFPP: Variable ISP engine setup complete");
             if (UseDirectThrottle)
             {
                 Debug.Log("NFPP: Using direct throttle method");
             }
         }
+
+        private void CalculateCurves()
+        {
+            ThrustCurve = new FloatCurve();
+            ThrustCurve.Add(0f, engine.maxThrust);
+            ThrustCurve.Add(1f, 0f);
+
+            AtmoCurve = new FloatCurve();
+            AtmoCurve.Add(0f, engine.atmosphereCurve.Evaluate(0f));
+
+            float rate = FindFlowRate(engine.maxThrust, engine.atmosphereCurve.Evaluate(0f), fuelPropellant);
+
+            AtmoCurve.Add(1f, FindIsp(minThrust, rate, fuelPropellant));
+        }
+
+        // finds the flow rate given thrust, isp and the propellant 
+        private float FindFlowRate(float thrust, float isp, Propellant fuelPropellant)
+        {
+            double fuelDensity = PartResourceLibrary.Instance.GetDefinition(fuelPropellant.name).density;
+            double fuelRate = ((thrust * 1000f) / (isp * 9.82d)) / (fuelDensity * 1000f);
+            return (float)fuelRate;
+        }
+
+        private float FindIsp(float thrust, float flowRate, Propellant fuelPropellant)
+        {
+            double fuelDensity = PartResourceLibrary.Instance.GetDefinition(fuelPropellant.name).density;
+            double isp = (((minThrust * 1000f) / (9.82d)) / flowRate) / (fuelDensity * 1000f);
+            return (float)isp;
+        }
+
 
         private void SetupVariableEngines()
         {
@@ -233,7 +270,7 @@ namespace NearFuture
                      if (throttleAmt != lastThrottle)
                      {
                          ChangeIspAndThrust(throttleAmt);
-                         engine.maxThrust = thrustAtmoCurve.Evaluate((float)FlightGlobals.getStaticPressure(vessel.transform.position));
+                         
                          lastThrottle = throttleAmt;
                      }
                      CurThrustSetting = engine.requestedThrottle * 100f;
@@ -257,10 +294,14 @@ namespace NearFuture
                             ChangeIspAndThrust(CurThrustSetting / 100f);
                             lastThrustSetting = CurThrustSetting;
                         }
-                        engine.maxThrust = thrustAtmoCurve.Evaluate((float)FlightGlobals.getStaticPressure(vessel.transform.position));
+                       
                         frameCounter = 0;
                     }
                 }
+
+                engine.maxThrust = ThrustCurve.Evaluate((float)FlightGlobals.getStaticPressure(vessel.transform.position));
+                engine.atmosphereCurve = new FloatCurve();
+                engine.atmosphereCurve.Add(0f, AtmoCurve.Evaluate((float)FlightGlobals.getStaticPressure(vessel.transform.position)));
             }
             
         }
