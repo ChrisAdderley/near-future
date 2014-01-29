@@ -87,6 +87,19 @@ namespace NearFuture
         [KSPField(isPersistant = false)]
         public FloatCurve PressureCurve;
         
+        // Fairings
+        // Editor Toggle
+        [KSPEvent(guiName = "Toggle Reactor Fairing", guiActive = false, guiActiveEditor = true)]
+        public void ToggleFairing () 
+        {
+        }
+
+        // Whether the fairing is present
+        [KSPField(isPersistant = true)]
+        public bool hasFairing = false;
+        
+
+
         // private
 
         // Current Ec/s generation
@@ -118,6 +131,11 @@ namespace NearFuture
             Enabled = false;
         }
 
+        [KSPEvent(guiActive = true, guiName = "Jettison Fairing", active = false)]
+        public void JettisonFairing()
+        {
+            
+        }
 
         /// UI ACTIONS
         /// --------------------

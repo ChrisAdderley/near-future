@@ -44,6 +44,23 @@ namespace NearFuture
             
         }
 
+        // Check to see if this module has any waste (for reprocessing)
+        public bool CheckContainsWaste()
+        {
+           
+            double wasteAvailable = this.part.Resources.Get(PartResourceLibrary.Instance.GetDefinition("DepletedUranium").id).amount;
+            double fuelSpaceAvailable = this.part.Resources.Get(PartResourceLibrary.Instance.GetDefinition("EnrichedUranium").id).maxAmount - this.part.Resources.Get(PartResourceLibrary.Instance.GetDefinition("EnrichedUranium").id).amount;
+
+            if (wasteAvailable > 0d && fuelSpaceAvailable > 0)
+            {
+                Debug.Log("NFPP: Container has waste & space");
+                return true;
+            }
+            Debug.Log("NFPP: Container has no waste and space");
+            return false;
+
+        }
+
         // Refuel from this module
         public void RefuelReactorFromContainer(FissionGenerator reactor, double amt)
         {
